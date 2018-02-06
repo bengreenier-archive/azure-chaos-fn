@@ -96,7 +96,7 @@ class ChaosResponse {
 
 const endpointBootStrap = (context, fn) => {
     // ensure v1
-    if (!context.headers.accept || !context.headers.accept.startsWith('application/vnd.azure-chaos.1')) {
+    if (!context.req.headers.accept || !context.req.headers.accept.startsWith('application/vnd.azure-chaos.1')) {
         context.res = {
             status: 500,
             body: `invalid api version. Accept: '${context.headers.accept}'`
