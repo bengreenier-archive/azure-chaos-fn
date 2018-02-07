@@ -1,156 +1,94 @@
 const assert = require('assert')
 const index = require('../')
-const v1 = index.v1
 
-describe('v1', () => {
-    it('should expose globals', () => {
-        assert.ok(v1.ChaosRequest)
-        assert.ok(v1.ChaosResponse)
-        assert.ok(v1.ChaosResourceId)
-        assert.ok(v1.start)
-        assert.equal(typeof v1.start, 'object')
-        assert.equal(typeof v1.stop, 'object')
-        assert.equal(typeof v1.start.bootStrap, 'function')
-        assert.equal(typeof v1.stop.bootStrap, 'function')
-    })
-
-    describe('ChaosResourceId', () => {
-        it('parses properly', () => {
-            assert.throws(() => {
-                new v1.ChaosResourceId(1)
-            })
-
-            assert.throws(() => {
-                new v1.ChaosResourceId('')
-            })
-
-            assert.throws(() => {
-                new v1.ChaosResourceId('one/two')
-            })
-
-            assert.throws(() => {
-                new v1.ChaosResourceId('one/two/three/four')
-            })
-
-            const instance = new v1.ChaosResourceId('sub/rg/resource')
-
-            assert.equal(instance.subscription, "sub")
-            assert.equal(instance.resourceGroup, "rg")
-            assert.equal(instance.resourceId, "resource")
-        })
-    })
-
-    describe('ChaosRequest', () => {
-        it('parses properly', () => {
-            // invalid at
-            assert.throws(() => {
-                new v1.ChaosRequest({
-                    req: {
-                        body: {
-                            accessToken: 1
-                        }
-                    }
-                })
-            })
-
-            // empty resourceIds
-            assert.throws(() => {
-                new v1.ChaosRequest({
-                        req: {
-                            body: {
-                            accessToken: "valid type",
-                            resourceIds: []
-                        }
-                    }
-                })
-            })
-
-            // invalid resourceIds type
-            assert.throws(() => {
-                new v1.ChaosRequest({
-                    req: {
-                        body: {
-                            accessToken: "valid type",
-                            resourceIds: [
-                                1
-                            ]
-                        }
-                    }
-                })
-            })
-
-            // invalid resourceIds format
-            assert.throws(() => {
-                new v1.ChaosRequest({
-                    req: {
-                        body: {
-                            accessToken: "valid type",
-                            resourceIds: [
-                                "valid type"
-                            ]
-                        }
-                    }
-                })
-            })
-
-            // valid
-            const expectedAccessToken = "12345234r2"
-            const expectedResourceIds = ["sub/rg/resource"]
-            const instance = new v1.ChaosRequest({
-                req: {
-                        body: {
-                        accessToken: expectedAccessToken,
-                        resourceIds: expectedResourceIds
-                    }
+describe('azure-chaos-fn', () => {
+    it('parses resources', () => {
+        assert.throws(() => {
+            index.validators.resources({
+                body: {
+                    resources: [1]
                 }
             })
-
-            assert.equal(instance.accessToken, expectedAccessToken)
-            assert.ok(instance.resourceIds[0] instanceof v1.ChaosResourceId)
         })
+
+        assert.throws(() => {
+            index.validators.resources({
+                body: {
+                    resources: ['']
+                }
+            })
+        })
+
+        assert.throws(() => {
+            index.validators.resources({
+                body: {
+                    resources: ['one/two/three/four']
+                }
+            })
+        })
+
+        const instance = index.parsers.resourcesToObjects({
+            body: {
+                resources: ['sub/rg/resource']
+            }
+        })[0]
+
+        assert.equal(instance.subscriptionId, "sub")
+        assert.equal(instance.resourceGroupName, "rg")
+        assert.equal(instance.resourceName, "resource")
     })
 
-    describe('ChaosResponse', () => {
-        it('serializes properly', () => {
-            const ctx = {res: {}}
-            const instance = new v1.ChaosResponse(ctx)
-
-            instance.status(200, 'pie')
-
-            assert.equal(instance.wasEnded, false)
-            assert.equal(typeof ctx.res.status, 'undefined')
-            assert.equal(typeof ctx.res.body, 'undefined')
-
-            instance.end()
-
-            assert.equal(ctx.res.status, 200)
-            assert.equal(ctx.res.body, 'pie')
-            assert.equal(instance.wasEnded, true)
-
-            assert.throws(() => {
-                instance.status(200)
+    it('parses accessTokens', () => {
+        // invalid at
+        assert.throws(() => {
+            index.validators.accessToken({
+                body: {
+                    accessToken: 1
+                }
             })
         })
 
-        it('serializes properly (without body)', () => {
-            const ctx = {res: {}}
-            const instance = new v1.ChaosResponse(ctx)
-
-            instance.status(200)
-
-            assert.equal(instance.wasEnded, false)
-            assert.equal(typeof ctx.res.status, 'undefined')
-            assert.equal(typeof ctx.res.body, 'undefined')
-            
-            instance.end()
-
-            assert.equal(ctx.res.status, 200)
-            assert.ok(!ctx.res.body)
-            assert.equal(instance.wasEnded, true)
-
-            assert.throws(() => {
-                instance.status(200)
+        // empty resourceIds
+        assert.throws(() => {
+            index.validators.accessToken({
+                    body: {
+                    accessToken: "valid type"
+            }
             })
         })
+
+        // invalid resourceIds type
+        assert.throws(() => {
+            index.validators.accessToken({
+                body: {
+                    accessToken: "valid type"
+                }
+            })
+        })
+
+        // invalid resourceIds format
+        assert.throws(() => {
+            index.validators.accessToken({
+                body: {
+                    accessToken: "valid type"
+                }
+            })
+        })
+
+        // valid
+        const expectedAccessToken = "Bearer 12345234r2"
+        const instance =index.parsers.accessTokenToCredentials({
+            body: {
+                accessToken: expectedAccessToken
+            }
+        })
+
+        const res = {
+            headers: {}
+        }
+
+        instance.signRequest(res, () => {})
+
+        assert.equal(res.headers['Authorization'], expectedAccessToken)
     })
 })

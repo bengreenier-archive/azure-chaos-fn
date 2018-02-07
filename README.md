@@ -2,89 +2,69 @@
 
 [![Build Status](https://travis-ci.org/bengreenier/azure-chaos-fn.svg?branch=master)](https://travis-ci.org/bengreenier/azure-chaos-fn)
 
-> To scaffold projects more easily, see [generator-azure-chaos-fn](https://github.com/bengreenier/generator-azure-chaos-fn). :sparkles:
-
-The base module for all [azure-chaos](https://github.com/bengreenier/azure-chaos) extensions :gear: :robot_face:
+A helper module for all `node` [azure-chaos](https://github.com/bengreenier/azure-chaos) extensions :gear: :robot:
 
 ![readme logo](https://github.com/bengreenier/azure-chaos-fn/raw/master/readme_logo.gif)
 
-This module defines a `javascript` framework that is helpful when authoring [azure-chaos](https://github.com/bengreenier/azure-chaos) functions. It provides a lightweight processing pipeline that allows extension authors to more easily engineer chaos, without worrying about communication details with the orchestrator.
+This module defines a `javascript` framework that is helpful when authoring [azure-chaos](https://github.com/bengreenier/azure-chaos) functions. It provides lightweight helpers that allow extension authors to more easily engineer chaos, without worrying about communication details with the orchestrator.
 
 ## API
 
-> __If your functions are `async` they should return a `Promise`!__
+This is the exported API from the `azure-chaos-fn` module.
 
-Current version is `v1` - access it with `require('azure-chaos-fn/v1')` or `require('azure-chaos-fn').v1`.
+### validators
 
-## start.bootStrap
-
-`Function` that bootstraps the request to start chaos. Should be given `context` (from azure functions) and `func` (the function to run).
-
-Example:
+Request validation helpers. Useful to ensure data coming in is behaving as expecting.
 
 ```
-const yourFunc = require('./your-func')
-bootStrap(context, yourFunc)
+const validate = require('azure-chaos-fn/validators')
 ```
-
-## stop.bootStrap
-
-`Function` that bootstraps the request to stop chaos. Should be given `context` (from azure functions) and `func` (the function to run).
-
-Example:
-
-```
-const yourFunc = require('./your-func')
-bootStrap(context, yourFunc)
-```
-
-### ChaosRequest
-
-Represents a request
 
 #### accessToken
 
-`String` - the access token to use when issuing requests to azure
-
-#### resourceIds
-
-`Array` of [ChaosResourceId](#chaosresourceid)s
-
-### ChaosResponse
-
-#### status
-
-`Function` that takes a `status` (a Number) and optionally a `desc` (a String) that describe the result of the request for chaos. 
-
-Example:
+Validates that the `body` of a `req` object contains a valid `accessToken`.
 
 ```
-res.status(200, JSON.stringify({status: 'all good'}))
+try { require('azure-chaos-fn/validators').accessToken(req) } catch (ex) { console.error(`error: ${ex}`) }
 ```
 
-#### end
+#### resources
 
-`Function` that locks the response, indicating it's ready to be sent and will have no more action taken upon it. This can only be called once.
+Validates that the `body` of a `req` object contains a valid `resources` array.
 
-#### wasEnded
+```
+try { require('azure-chaos-fn/validators').resources(req) } catch (ex) { console.error(`error: ${ex}`) }
+```
 
-`Bool` that indicates if [end](#end) was called.
+### parsers
 
-### ChaosResourceId
+> Note: these depend on the [validators](#validators) to ensure only valid data is parsed.
 
-Represents the tri-part `resourceIds` that are passed in a `ChaosRequest`.
+Request parser helpers. Useful to parse valid request data into models.
 
-#### subscription
+```
+const parsers = require('azure-chaos-fn/parsers')
+```
 
-`String` - the subscription id
+#### accessTokenToCredentials
 
-#### resourceId
+Inflates the `accessToken` from a `req` objects `body` into a [ms-rest-azure](https://www.npmjs.com/package/ms-rest-azure) compatible   credentials object.
 
-`String` - the resource id
+```
+const credentials = require('azure-chaos-fn/parsers').accessTokenToCredentials(req)
+```
 
-#### resourceGroup
+#### resourcesToObjects
 
-`String` - The resource group
+Inflates the `resources` from a `req` objects `body` into a collection of objects containing the following properties:
+
++ `subscriptionId` - the azure subscription id to target
++ `resourceGroupName` - the azure resource group name to target
++ `resourceName` - the azure resource name to target
+
+```
+const objs = require('azure-chaos-fn/parsers').resourcesToObjects(req)
+```
 
 ## License
 
